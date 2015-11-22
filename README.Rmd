@@ -1,0 +1,102 @@
+---
+title: "Practical Machine Learning Project"
+author: "Nttq"
+date: "November 22, 2015"
+output: html_document
+---
+
+#Introduction
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+
+The detail of the project is given here: [ http://groupware.les.inf.puc-rio.br/har ]( http://groupware.les.inf.puc-rio.br/har )
+
+The training data for this project are available here: 
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data are available here: 
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. 
+
+# Building model
+## Question
+In the aforementioned study, six participants participated in a dumbell lifting exercise five different ways: A(exactly according to the specification), B(throwing the elbows to the front), C(lifting the dumbbell only halfway), D(lowering the dumbbell only halfway), E(throwing the hips to the front). Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.”
+
+By processing data gathered from accelerometers on the belt, forearm, arm, and dumbell of the participants in a machine learning algorithm, we try to predict appropriate activity quality (class A-E).
+
+## Reading data and cleaning
+
+First, we download and load the data:
+
+```{r}
+set.seed(12345)
+
+library(AppliedPredictiveModeling)
+library(caret)
+library(rattle)
+library(rpart.plot)
+library(randomForest)
+
+url_raw_training <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+file_dest_training <- "pml-training.csv"
+url_raw_testing <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+file_dest_testing <- "pml-testing.csv"
+
+# Import the data treating empty values as NA.
+trainRaw <- read.csv(file_dest_training, na.strings=c("NA",""), header=TRUE)
+testRaw <- read.csv(file_dest_testing, na.strings=c("NA",""), header=TRUE)
+```
+
+Then we remove columns that contain NA missing values.
+```{r}
+trainRaw <- trainRaw[, colSums(is.na(trainRaw)) == 0] 
+testRaw <- testRaw[, colSums(is.na(testRaw)) == 0] 
+```
+
+Then we get rid of some columns that do not contribute much to the accelerometer measurements.:
+```{r}
+classe <- trainRaw$classe
+trainRemove <- grepl("^X|timestamp|window", names(trainRaw))
+trainRaw <- trainRaw[, !trainRemove]
+trainCleaned <- trainRaw[, sapply(trainRaw, is.numeric)]
+trainCleaned$classe <- classe
+testRemove <- grepl("^X|timestamp|window", names(testRaw))
+testRaw <- testRaw[, !testRemove]
+testCleaned <- testRaw[, sapply(testRaw, is.numeric)]
+```
+
+In order for input to the algorithm, we prepare the validation set by splitting the cleaned trainning set into the training set (30%) and the validation set (70%).
+```{r}
+inTrain <- createDataPartition(trainCleaned$classe, p=0.70, list=F)
+trainData <- trainCleaned[inTrain, ]
+testData <- trainCleaned[-inTrain, ]
+```
+## Model
+We choose Random Forest algorithm because it automatically selects important variables and is robust to correlated covariates & outliers. We also use 5-fold cross validation.
+
+```{r}
+controlRf <- trainControl(method="cv", 5)
+modelRf <- train(classe ~ ., data=trainData, method="rf", trControl=controlRf, ntree=250)
+modelRf
+```
+## Evaluation
+Finally, we used the trained model to do prediction on the validation data set
+
+```{r}
+predictRf <- predict(modelRf, testData)
+confusionMatrix(testData$classe, predictRf)
+```
+
+The estimated accuracy of the model is 99.3%:
+
+```{r}
+accuracy <- postResample(predictRf, testData$classe)
+accuracy
+```
+
+and the estimated out-of-sample error:
+
+```{r}
+oose <- 1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
+oose
+```
