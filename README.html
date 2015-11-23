@@ -196,6 +196,21 @@ accuracy</code></pre>
 <pre class="r"><code>oose &lt;- 1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
 oose</code></pre>
 <pre><code>## [1] 0.007816483</code></pre>
+<p>Finally, we use the trained model to predict for test data set:</p>
+<pre class="r"><code>result &lt;- predict(modelRf, testCleaned[, -length(names(testCleaned))])
+result</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
+<pre class="r"><code>answers &lt;- result
+pml_write_files &lt;- function(x){
+        n = length(x)
+        for(i in 1:n){
+                filename = paste0(&quot;problem_results/problem_id_&quot;,i,&quot;.txt&quot;)
+                write.table(x[i], file=filename, quote=FALSE,
+                            row.names=FALSE, col.names=FALSE)
+        }
+}
+pml_write_files(answers)</code></pre>
 </div>
 </div>
 

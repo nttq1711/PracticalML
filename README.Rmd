@@ -100,3 +100,20 @@ and the estimated out-of-sample error:
 oose <- 1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
 oose
 ```
+
+Finally, we use the trained model to predict for test data set:
+
+```{r}
+result <- predict(modelRf, testCleaned[, -length(names(testCleaned))])
+result
+answers <- result
+pml_write_files <- function(x){
+        n = length(x)
+        for(i in 1:n){
+                filename = paste0("problem_results/problem_id_",i,".txt")
+                write.table(x[i], file=filename, quote=FALSE,
+                            row.names=FALSE, col.names=FALSE)
+        }
+}
+pml_write_files(answers)
+```
